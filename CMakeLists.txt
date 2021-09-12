@@ -21,6 +21,13 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++
 endif()
 
+# Duplicate the MakeVariables.in flags introduced in b54ef24f7f0d6cd36c3e5ccba06fbbdb11ad2073.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_BLAS")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_FFTW")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_LAPACK")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_QUAD_T=__float128")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${PROJECT_SOURCE_DIR}/SCTL/include")
+
 set(MPI_CXX_SKIP_MPICXX
     true
     CACHE BOOL
