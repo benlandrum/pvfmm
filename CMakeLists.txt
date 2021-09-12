@@ -26,7 +26,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_BLAS")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_FFTW")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_HAVE_LAPACK")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSCTL_QUAD_T=__float128")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${PROJECT_SOURCE_DIR}/SCTL/include")
+
+add_library(sctl_includes INTERFACE)
+target_include_directories(sctl_includes INTERFACE SCTL/include/)
 
 set(MPI_CXX_SKIP_MPICXX
     true
@@ -96,7 +98,7 @@ target_include_directories(
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
          ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmm PUBLIC ${DEP_LIB} MPI::MPI_CXX)
+target_link_libraries(pvfmm PUBLIC ${DEP_LIB} MPI::MPI_CXX sctl_includes)
 
 # static lib
 add_library(pvfmmStatic STATIC ${pvfmm_SRC})
@@ -106,7 +108,7 @@ target_include_directories(
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
          ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} MPI::MPI_CXX)
+target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} MPI::MPI_CXX sctl_includes)
 
 # Config.cmake files
 include(CMakePackageConfigHelpers)
@@ -130,7 +132,7 @@ install(FILES ${CMAKE_BINARY_DIR}/pvfmmConfig.cmake
 # install core library and headers
 include(GNUInstallDirs)
 install(
-  TARGETS pvfmm
+  TARGETS pvfmm 
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(
@@ -141,5 +143,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pvfmm/)
 install(FILES ${CMAKE_BINARY_DIR}/pvfmm_config.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pvfmm/)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/SCTL/include/
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SCTL/)
 
 add_subdirectory(examples)
