@@ -75,6 +75,17 @@ inline T cmplt_intrin(const T& a, const T& b){
 }
 
 template <class T>
+inline T blendv_intrin(const T& a, const T& b, const T& mask){
+  T r=0;
+  const uint8_t* a_   =reinterpret_cast<const uint8_t*>(&a);
+  const uint8_t* b_   =reinterpret_cast<const uint8_t*>(&b);
+  const uint8_t* mask_=reinterpret_cast<const uint8_t*>(&mask);
+  uint8_t*       r_   =reinterpret_cast<      uint8_t*>(&r);
+  for(size_t i=0;i<sizeof(T);i++) r_[i] = mask_[i] ? b_[i] : a_[i];
+  return r;
+}
+
+template <class T>
 inline T and_intrin(const T& a, const T& b){
   T r=0;
   const uint8_t* a_=reinterpret_cast<const uint8_t*>(&a);
@@ -214,6 +225,16 @@ inline __m128 cmplt_intrin(const __m128& a, const __m128& b){
 template <>
 inline __m128d cmplt_intrin(const __m128d& a, const __m128d& b){
   return _mm_cmplt_pd(a,b);
+}
+
+template <>
+inline __m128 blendv_intrin(const __m128& a, const __m128& b){
+  return _mm_blendv_ps(a, b);
+}
+
+template <>
+inline __m128d blendv_intrin(const __m128d& a, const __m128d& b){
+  return _mm_blendv_pd(a, b);
 }
 
 template <>
@@ -421,6 +442,16 @@ inline __m256 cmplt_intrin(const __m256& a, const __m256& b){
 template <>
 inline __m256d cmplt_intrin(const __m256d& a, const __m256d& b){
   return _mm256_cmp_pd(a,b,_CMP_LT_OS);
+}
+
+template <>
+inline __m256 blendv_intrin(const __m256& a, const __m256& b){
+  return _mm256_blendv_ps(a, b);
+}
+
+template <>
+inline __m256d blendv_intrin(const __m256d& a, const __m256d& b){
+  return _mm256_blendv_pd(a, b);
 }
 
 template <>
