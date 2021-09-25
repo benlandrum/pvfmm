@@ -89,12 +89,11 @@ PtFMM_Tree<Real>* PtFMM_CreateTree(const std::vector<Real>& sl_coord, const std:
  * has changed.
  * \param[in]  tree       Pointer to the octree.
  * \param[out] trg_val    The target potential vector with values: [p1 q1 r1 ... pn qn rn] where (p1 q1 r1) is the potential at the first target point.
- * \param[in]  loc_size   Number of local target points.
  * \param[in]  sl_density The new single-layer source density vector.
  * \param[in]  dl_density The new double-layer source density vector.
  */
 template <class Real>
-void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, size_t loc_size=0, const std::vector<Real>* sl_density=NULL, const std::vector<Real>* dl_density=NULL);
+void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, const std::vector<Real>* sl_density=NULL, const std::vector<Real>* dl_density=NULL);
 
 }//end namespace
 

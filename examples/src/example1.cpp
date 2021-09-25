@@ -90,14 +90,15 @@ void fmm_test(size_t N, int mult_order, MPI_Comm comm){
   tree->SetupFMM(&matrices);
 
   // Run FMM
-  vec trg_value;
-  PtFMM_Evaluate(tree, trg_value, n_trg);
+  vec trg_value(n_trg * kernel_fn.ker_dim[1], 0);
+  PtFMM_Evaluate(tree, trg_value);
 
   // Re-run FMM
   tree->ClearFMMData();
   for(size_t i=0;i<sl_den.size();i++) sl_den[i]=drand48();
   for(size_t i=0;i<dl_den.size();i++) dl_den[i]=drand48();
-  PtFMM_Evaluate(tree, trg_value, n_trg, &sl_den, &dl_den);
+  std::fill(trg_value.begin(), trg_value.end(), 0);
+  PtFMM_Evaluate(tree, trg_value, &sl_den, &dl_den);
 
   {// Check error
     vec trg_sample_coord;
