@@ -965,7 +965,7 @@ void Kernel<T>::BuildMatrix(T* r_src, int src_cnt,
  * \brief Generic kernel which rearranges data for vectorization, calls the
  * actual uKernel and copies data to the output array in the original order.
  */
-template <class Real_t, int SRC_DIM, int TRG_DIM, void (*uKernel)(Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&)>
+template <class Real_t, int SRC_DIM, int TRG_DIM, int TRG_AUX_DIM, void (*uKernel)(Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&)>
 void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
   assert(dof==1);
   int VecLen=8;
@@ -986,7 +986,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     trg_cnt_=((trg_cnt+VecLen-1)/VecLen)*VecLen;
 
     size_t buff_size=src_cnt_*(PVFMM_COORD_DIM+SRC_DIM)+
-                     trg_cnt_*(PVFMM_COORD_DIM+TRG_DIM);
+                     trg_cnt_*(PVFMM_COORD_DIM+TRG_DIM+TRG_AUX_DIM);
     if(buff_size>STACK_BUFF_SIZE){ // Allocate buff
       buff=mem::aligned_new<Real_t>(buff_size, mem_mgr);
     }
@@ -1002,7 +1002,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     src_coord.ReInit(PVFMM_COORD_DIM, src_cnt_,buff_ptr,false);  buff_ptr+=PVFMM_COORD_DIM*src_cnt_;
     src_value.ReInit(  SRC_DIM, src_cnt_,buff_ptr,false);  buff_ptr+=  SRC_DIM*src_cnt_;
     trg_coord.ReInit(PVFMM_COORD_DIM, trg_cnt_,buff_ptr,false);  buff_ptr+=PVFMM_COORD_DIM*trg_cnt_;
-    trg_value.ReInit(  TRG_DIM, trg_cnt_,buff_ptr,false);//buff_ptr+=  TRG_DIM*trg_cnt_;
+    trg_value.ReInit(  TRG_DIM + TRG_AUX_DIM, trg_cnt_,buff_ptr,false);//buff_ptr+=  (TRG_DIM+TRG_AUX_DIM)*trg_cnt_;
     { // Set src_coord
       size_t i=0;
       for(   ;i<src_cnt ;i++){
@@ -1044,18 +1044,27 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     }
     { // Set trg_value
       size_t i=0;
+      for(   ;i<trg_cnt ;i++){
+	size_t j=0;
+	for(   ;j<TRG_DIM;j++){
+          trg_value[j][i]=0;
+        }
+	for(   ;j<TRG_DIM+TRG_AUX_DIM;j++){
+	  trg_value[j][i]=v_trg[i*(TRG_DIM+TRG_AUX_DIM)+j];
+	}
+      }
       for(   ;i<trg_cnt_;i++){
-        for(size_t j=0;j<TRG_DIM;j++){
+        for(size_t j=0;j<TRG_DIM+TRG_AUX_DIM;j++){
           trg_value[j][i]=0;
         }
       }
     }
   }
   uKernel(src_coord,src_value,trg_coord,trg_value);
-  { // Set v_trg
+  { // Set v_trg (do not increment auxiliary target data)
     for(size_t i=0;i<trg_cnt ;i++){
       for(size_t j=0;j<TRG_DIM;j++){
-        v_trg[i*TRG_DIM+j]+=trg_value[j][i];
+        v_trg[i*(TRG_DIM+TRG_AUX_DIM)+j]+=trg_value[j][i];
       }
     }
   }
@@ -1131,7 +1140,7 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
 template <class T, int newton_iter=0>
 void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define LAP_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 1, 1, 0, laplace_poten_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define LAPLACE_KERNEL LAP_KER_NWTN(0); LAP_KER_NWTN(1); LAP_KER_NWTN(2); LAP_KER_NWTN(3);
 
@@ -1251,7 +1260,7 @@ void laplace_dbl_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, M
 template <class T, int newton_iter=0>
 void laplace_dbl_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define LAP_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 4, 1, laplace_dbl_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 4, 1, 0, laplace_dbl_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define LAPLACE_KERNEL LAP_KER_NWTN(0); LAP_KER_NWTN(1); LAP_KER_NWTN(2); LAP_KER_NWTN(3);
 
@@ -1363,7 +1372,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 template <class T, int newton_iter=0>
 void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define LAP_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 1, 3, 0, laplace_grad_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define LAPLACE_KERNEL LAP_KER_NWTN(0); LAP_KER_NWTN(1); LAP_KER_NWTN(2); LAP_KER_NWTN(3);
 
@@ -1520,7 +1529,7 @@ void stokes_vel_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Ma
 template <class T, int newton_iter=0>
 void stokes_vel(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define STK_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 3, 3, stokes_vel_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 3, 3, 0, stokes_vel_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define STOKES_KERNEL STK_KER_NWTN(0); STK_KER_NWTN(1); STK_KER_NWTN(2); STK_KER_NWTN(3);
 
@@ -2478,7 +2487,7 @@ void biot_savart_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, M
 template <class T, int newton_iter=0>
 void biot_savart(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define BS_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 3, 3, biot_savart_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 3, 3, 0, biot_savart_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define BIOTSAVART_KERNEL BS_KER_NWTN(0); BS_KER_NWTN(1); BS_KER_NWTN(2); BS_KER_NWTN(3);
 
@@ -2611,7 +2620,7 @@ void helmholtz_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_valu
 template <class T, int newton_iter=0>
 void helmholtz_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
   #define HELM_KER_NWTN(nwtn) if(newton_iter==nwtn) \
-        generic_kernel<Real_t, 2, 2, helmholtz_poten_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+        generic_kernel<Real_t, 2, 2, 0, helmholtz_poten_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
             ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
   #define HELMHOLTZ_KERNEL HELM_KER_NWTN(0); HELM_KER_NWTN(1); HELM_KER_NWTN(2); HELM_KER_NWTN(3);
 
