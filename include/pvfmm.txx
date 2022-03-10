@@ -117,7 +117,9 @@ inline PtFMM_Tree<Real>* PtFMM_CreateTree(const std::vector<Real>& src_coord, co
 }
 
 template <class Real>
-inline void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, size_t loc_size, const std::vector<Real>* src_val, const std::vector<Real>* surf_val){
+inline void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, const std::vector<Real>* src_val, const std::vector<Real>* surf_val){
+  // TODO: Perform a check on the size here.
+
   if(src_val){
     std::vector<size_t> src_scatter_;
     const auto& nodes=tree->GetNodeList();
@@ -168,6 +170,40 @@ inline void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, s
       }
     }
   }
+
+  // Scatter the target values.
+  {
+    auto& nodes = tree->GetNodeList();
+
+    // Fill a standard vector of scatter indices for (actual) targets.
+    std::vector<size_t> trg_scatter_;
+    for (auto node : nodes) {
+      if (!node->IsLeaf() || node->IsGhost()) continue;
+      for (size_t i = 0; i < node->trg_scatter.Dim(); ++i) {
+	trg_scatter_.push_back(node->trg_scatter[i]);
+      }
+    }
+    assert(trg_val.size() % trg_scatter_.size() == 0);
+
+    // Create a Vector ordered by the input target values (or target coordinates).
+    Vector<Real> trg_value = trg_val;
+
+    // Create a Vector from the harvested target scatter indices.
+    Vector<size_t> trg_scatter = trg_scatter_;
+
+    // Reorder the target values to be node-iterable.
+    par::ScatterForward(trg_value, trg_scatter, *tree->Comm());
+
+    // Drain the node-ordered target values onto the nodes.
+    size_t indx = 0;
+    for (auto node : nodes) {
+      if (!node->IsLeaf() || node->IsGhost()) continue;
+      for (size_t i = 0; i < node->trg_value.Dim(); ++i) {
+	node->trg_value[i] = trg_value[indx++];
+      }
+    }
+  }
+
   tree->RunFMM();
   Vector<Real> trg_value;
   Vector<size_t> trg_scatter;
@@ -186,9 +222,13 @@ inline void PtFMM_Evaluate(PtFMM_Tree<Real>* tree, std::vector<Real>& trg_val, s
     trg_value=trg_value_;
     trg_scatter=trg_scatter_;
   }
+
+  // TODO: Figure out something better than this.
+  assert(trg_value.Dim() == trg_val.size());
+  size_t loc_size = trg_scatter.Dim();
+
   par::ScatterReverse(trg_value,trg_scatter,*tree->Comm(),loc_size);
   trg_val.assign(&trg_value[0],&trg_value[0]+trg_value.Dim());;
 }
 
 }//end namespace
-

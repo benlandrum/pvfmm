@@ -1386,7 +1386,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       { // trg_value
         Vector<Real_t>& data_vec=node->trg_value;
         size_t vec_sz=(node->trg_coord.Dim()/PVFMM_COORD_DIM)*trg_dof;
-        data_vec.ReInit(vec_sz,NULL,false);
+	if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
         vec_lst.push_back(&data_vec);
       }
     }
@@ -1455,7 +1455,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
   for(size_t indx=0;indx<vec_list.size();indx++){ // Resize buffer
     Matrix<Real_t>&                  buff=buff_list[indx];
     std::vector<Vector<Real_t>*>& vec_lst= vec_list[indx];
-    bool keep_data=(indx==4 || indx==6);
+    bool keep_data=(indx==4 || indx == 5 || indx==6);
     size_t n_vec=vec_lst.size();
 
     { // Continue if nothing to be done.
