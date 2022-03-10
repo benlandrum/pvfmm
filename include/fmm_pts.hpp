@@ -113,7 +113,7 @@ class FMM_Pts{
    */
   FMM_Pts(mem::MemoryManager* mem_mgr_=NULL): mem_mgr(mem_mgr_),
              vprecomp_fft_flag(false), vlist_fft_flag(false),
-               vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
+               vlist_ifft_flag(false), mat(NULL), kernel(NULL), m2c(NULL){};
 
   /**
    * \brief Virtual destructor.
@@ -163,6 +163,7 @@ class FMM_Pts{
   virtual void Up2Up     (SetupData<Real_t>&  setup_data, bool device=false);
 
   virtual void PeriodicBC(FMMNode* node, BoundaryType bndry_cond);
+  virtual void SetM2C(Real_t* dataPtr);
 
   /**
    * \brief Compute V-List intractions.
@@ -234,6 +235,7 @@ class FMM_Pts{
   std::string mat_fname;
   int multipole_order;       //Order of multipole expansion.
   MPI_Comm comm;
+  Real_t* m2c;
 
 };
 

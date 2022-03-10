@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(
   PVFMM
-  VERSION 1.1
+  VERSION 1.2
   LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
+include(GNUInstallDirs)
 
 # compiler flags
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -24,27 +25,35 @@ set(MPI_CXX_SKIP_MPICXX
     true
     CACHE BOOL
           "If true, the MPI-2 C++ bindings are disabled using definitions.")
+          
 # required compiler features
 find_package(MPI REQUIRED)
-find_package(OpenMP REQUIRED)
 
 # library
-find_package(MKL)
+find_package(MKL CONFIG)
 if(MKL_FOUND)
-  set(DEP_INC ${MKL_FFTW_INCLUDE_DIR} ${MKL_INCLUDE_DIR})
-  set(DEP_LIB ${MKL_SDL_LIBRARY})
+  set(DEP_INC ${MKL_INCLUDE} ${MKL_INCLUDE}/fftw)
+  set(DEP_LIB MKL::MKL)
 else()
+  find_package(OpenMP REQUIRED)
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
   find_package(FFTW REQUIRED)
   set(DEP_INC ${FFTW_INCLUDE_DIRS})
-  set(DEP_LIB ${FFTW_FLOAT_LIB} ${FFTW_DOUBLE_LIB} ${BLAS_LIBRARIES}
+  set(DEP_LIB OpenMP::OpenMP_CXX
+              ${FFTW_FLOAT_OPENMP_LIB} ${FFTW_FLOAT_LIB}
+              ${FFTW_DOUBLE_OPENMP_LIB} ${FFTW_DOUBLE_LIB} 
+              ${BLAS_LIBRARIES}
               ${LAPACK_LIBRARIES})
 endif()
 
 find_file(SYS_STAT sys/stat.h OPTIONAL)
 
 # generate pvfmm_config.h
+
+# switch for periodic boundary condition
+option(PVFMM_EXTENDED_BC "PVFMM_EXTENDED_BC" ON)
+
 if(MKL_FOUND)
   option(PVFMM_FFTW3_MKL "PVFMM_FFTW3_MKL" ON)
   option(PVFMM_HAVE_FFTW "PVFMM_HAVE_FFTW" ON)
@@ -68,7 +77,6 @@ if(SYS_STAT)
 endif()
 
 configure_file(pvfmm_config.h.in pvfmm_config.h @ONLY)
-configure_file(pvfmm_config.h.in include/pvfmm_config.h @ONLY)
 
 # part 1, core library
 file(GLOB pvfmm_SRC "src/*.cpp")
@@ -81,7 +89,7 @@ target_include_directories(
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
          ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmm PUBLIC ${DEP_LIB} OpenMP::OpenMP_CXX MPI::MPI_CXX)
+target_link_libraries(pvfmm PUBLIC ${DEP_LIB} MPI::MPI_CXX)
 
 # static lib
 add_library(pvfmmStatic STATIC ${pvfmm_SRC})
@@ -91,8 +99,7 @@ target_include_directories(
   PUBLIC $<INSTALL_INTERFACE:include>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
          ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} OpenMP::OpenMP_CXX
-                                         MPI::MPI_CXX)
+target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} MPI::MPI_CXX)
 
 # Config.cmake files
 include(CMakePackageConfigHelpers)
