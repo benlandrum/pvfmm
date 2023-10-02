@@ -16,8 +16,8 @@ RESULT_DIR = ./result
 # the subdirectories of the project to go into
 #SUBDIRS = 
 
-DIST_SUBDIRS= \
-									doc/doc
+#DIST_SUBDIRS = doc/doc
+
 
 EXTRA_DIST = \
 									$(EX_DIR)/src \
@@ -26,7 +26,7 @@ EXTRA_DIST = \
 									$(DX_CONFIG) \
 									scripts
 
-# additional include pathes necessary to compile the C++ library
+# additional include paths necessary to compile the C++ library
 AM_CXXFLAGS =
 #AM_LDFLAGS = -static
 
@@ -72,7 +72,6 @@ pvfmm_cpp_header_files = \
 									include/parUtils.h \
 									include/precomp_mat.hpp \
 									include/profile.hpp \
-									include/math_utils.hpp \
 									include/stacktrace.h \
 									include/tree.hpp \
 									include/tree_node.hpp \
@@ -87,7 +86,6 @@ pvfmm_cpp_header_files = \
 									include/interac_list.txx \
 									include/kernel.txx \
 									include/matrix.txx \
-									include/mat_utils.txx \
 									include/mem_mgr.txx \
 									include/mortonid.txx \
 									include/mpi_node.txx \
@@ -96,12 +94,65 @@ pvfmm_cpp_header_files = \
 									include/parUtils.txx \
 									include/precomp_mat.txx \
 									include/tree.txx \
-									include/vector.txx
+									include/vector.txx \
+									SCTL/include/sctl.hpp
 
 lib_libpvfmm_la_HEADERS = \
 									$(pvfmm_cpp_header_files) \
 									include/pvfmm.f90 \
 									include/pvfmm.h
+
+subdirheadersdir = $(includedir)/pvfmm/sctl
+
+subdirheaders_HEADERS = \
+												SCTL/include/sctl/blas.h \
+												SCTL/include/sctl/boundary_integral.hpp \
+												SCTL/include/sctl/boundary_integral.txx \
+												SCTL/include/sctl/boundary_quadrature.hpp \
+												SCTL/include/sctl/cheb_utils.hpp \
+												SCTL/include/sctl/comm.hpp \
+												SCTL/include/sctl/comm.txx \
+												SCTL/include/sctl/common.hpp \
+												SCTL/include/sctl/fft_wrapper.hpp \
+												SCTL/include/sctl/fmm-wrapper.hpp \
+												SCTL/include/sctl/fmm-wrapper.txx \
+												SCTL/include/sctl/intrin-wrapper.hpp \
+												SCTL/include/sctl/kernel_functions.hpp \
+												SCTL/include/sctl/lagrange-interp.hpp \
+												SCTL/include/sctl/lagrange-interp.txx \
+												SCTL/include/sctl/lapack.h \
+												SCTL/include/sctl/legendre_rule.hpp \
+												SCTL/include/sctl/mat_utils.hpp \
+												SCTL/include/sctl/mat_utils.txx \
+												SCTL/include/sctl/math_utils.hpp \
+												SCTL/include/sctl/math_utils.txx \
+												SCTL/include/sctl/matrix.hpp \
+												SCTL/include/sctl/matrix.txx \
+												SCTL/include/sctl/mem_mgr.hpp \
+												SCTL/include/sctl/mem_mgr.txx \
+												SCTL/include/sctl/morton.hpp \
+												SCTL/include/sctl/ode-solver.hpp \
+												SCTL/include/sctl/ode-solver.txx \
+												SCTL/include/sctl/ompUtils.hpp \
+												SCTL/include/sctl/ompUtils.txx \
+												SCTL/include/sctl/parallel_solver.hpp \
+												SCTL/include/sctl/profile.hpp \
+												SCTL/include/sctl/profile.txx \
+												SCTL/include/sctl/quadrule.hpp \
+												SCTL/include/sctl/slender_element.hpp \
+												SCTL/include/sctl/slender_element.txx \
+												SCTL/include/sctl/sph_harm.hpp \
+												SCTL/include/sctl/sph_harm.txx \
+												SCTL/include/sctl/stacktrace.h \
+												SCTL/include/sctl/tensor.hpp \
+												SCTL/include/sctl/tree.hpp \
+												SCTL/include/sctl/tree.txx \
+												SCTL/include/sctl/vec-test.hpp \
+												SCTL/include/sctl/vec.hpp \
+												SCTL/include/sctl/vector.hpp \
+												SCTL/include/sctl/vector.txx \
+												SCTL/include/sctl/vtudata.hpp \
+												SCTL/include/sctl/vtudata.txx
 
 #nodist_lib_libpvfmm_la_HEADERS = \
 #									include/pvfmm_config.h
@@ -112,8 +163,6 @@ lib_libpvfmm_la_SOURCES = \
 									src/cheb_utils.cpp \
 									src/device_wrapper.cpp \
 									src/legendre_rule.cpp \
-									src/mat_utils.cpp \
-									src/math_utils.cpp \
 									src/mem_mgr.cpp \
 									src/mortonid.cpp \
 									src/profile.cpp \
@@ -140,6 +189,9 @@ if NVCC_OK
 .cu.o :
 	$(NVCC_PVFMM) $(NVCCFLAGS_PVFMM) -c $< -o $@
 
+.cu.lo :
+	$(LIBTOOL) --tag=CC --mode=compile $(NVCC_PVFMM) $(NVCCFLAGS_PVFMM) -c $< -o $@
+
 endif
 
 
@@ -158,10 +210,7 @@ $(EX_DIR)/bin/%: core
 # BUILD DOCUMENTATION
 #------------------------------------------------------------------------------
 
-pdf-doc:
-	cd doc/doc && $(MAKE);
-
-all-docs: doxygen-doc pdf-doc
+all-docs: doxygen-doc
 
 ###############################################################################
 # INSTALL/UNINSTALL MakeVariables, pvfmm_config.h
@@ -230,10 +279,8 @@ install: install-am
 	@echo '======================================================================='
 
 install-data-local: install-make-variables install-libtool install-doxygen-doc
-	cd doc/doc && $(MAKE) install;
 
 uninstall-local: uninstall-make-variables uninstall-libtool uninstall-doxygen-doc
-	cd doc/doc && $(MAKE) uninstall;
 
 
 ###############################################################################

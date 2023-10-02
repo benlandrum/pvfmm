@@ -28,14 +28,24 @@ AC_PROG_MAKE_SET
 #AC_PROG_RANLIB
 ##AM_PROG_AR
 
+# Check for CUDA
+AX_CHECK_CUDA
+
 # automake 1.12 seems to require AM_PROG_AR, but automake 1.11 doesn't
 # recognize it
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+
+if test "x${ac_compile_nvcc}" = xyes; then
+  CC_save=$CC
+  CC=$NVCC
+fi
+
 LT_INIT
 AC_PROG_LIBTOOL
 
-# Check for CUDA
-AX_CHECK_CUDA
+if test "x${ac_compile_nvcc}" = xyes; then
+  CC=$CC_save
+fi
 
 # Checks for documentation build tools
 AC_CHECK_PROG([doxygen_ok], [doxygen], [yes], [no])
@@ -112,6 +122,9 @@ if $USE_OPENMP; then
       gnu)
       CHECK_OPENMP(-fopenmp)
       ;;
+      clang)
+      CHECK_OPENMP(-fopenmp)
+      ;;
       intel)
       CHECK_OPENMP(-openmp)
       CHECK_OPENMP(-qopenmp)
@@ -129,7 +142,7 @@ if $USE_OPENMP; then
 
   # Error: OpenMP not available.
   if test "$cv_openmp" = no; then
-    AC_MSG_ERROR([Don't know how to enable OpenMP. 
+    AC_MSG_ERROR([Don't know how to enable OpenMP.
 		  Please specify the OpenMP flag using: --with-openmp-flag=<flag>.]);
   fi
 fi
@@ -208,10 +221,9 @@ AC_ARG_WITH(precomp-dir,
             [PRECOMP_DIR="$withval"; AX_NORMALIZE_PATH([PRECOMP_DIR], ["/"]) ])
 AC_DEFINE_UNQUOTED(PRECOMP_DATA_PATH,"$PRECOMP_DIR",[Path for precomputed data files.])
 
-#AC_CONFIG_FILES([Makefile doc/doc/Makefile])
+#AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([Makefile
-                 MakeVariables
-                 doc/doc/Makefile])
+                 MakeVariables])
 AC_OUTPUT
 
 echo "
@@ -223,6 +235,7 @@ External libs:
   - BLAS ........... : ${acx_blas_ok}
   - LAPACK ......... : ${acx_lapack_ok}
   - FFTW ........... : ${acx_fftw_ok}
+  - CUDA ........... : ${ac_compile_nvcc}
 
 Compiler/linker flags/libs/defs:
   - MPICXX ......... : ${MPICXX}
@@ -230,6 +243,7 @@ Compiler/linker flags/libs/defs:
   - LDFLAGS ........ : ${LDFLAGS}
   - LIBS ........... : ${LIBS}
     - BLAS ......... : ${BLAS_LIBS}
+    - LAPACK ....... : ${LAPACK_LIBS}
     - FFTW ......... : ${FFTW_LIB} ${FFTWF_LIB}
     - X11 .......... : ${X_LIBS}
 

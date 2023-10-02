@@ -20,6 +20,7 @@
 /src/.deps/
 /src/.dirstamp
 /src/*.o
+/src/*.lo
 /stamp-h1
 
 m4/libtool.m4
@@ -34,3 +35,7 @@ libtool
 .project
 .settings/
 
+build/
+
+*.pyc
+pvfmm.egg-info/

@@ -26,7 +26,7 @@ std::ostream& operator<<(std::ostream& output, const Matrix<T>& M){
   for(size_t i=0;i<M.Dim(0);i++){
     for(size_t j=0;j<M.Dim(1);j++){
       float f=((float)M(i,j));
-      if(pvfmm::fabs<T>(f)<1e-25) f=0;
+      if(sctl::fabs<T>(f)<1e-25) f=0;
       output<<std::setw(10)<<((double)f)<<' ';
     }
     output<<";\n";
@@ -216,8 +216,8 @@ void Matrix<T>::Resize(size_t i, size_t j){
 
 template <class T>
 void Matrix<T>::SetZero(){
-  if(dim[0]*dim[1])
-    memset(data_ptr,0,dim[0]*dim[1]*sizeof(T));
+  if(dim[0] && dim[1])
+    ::memset(data_ptr,0,dim[0]*dim[1]*sizeof(T));
 }
 
 template <class ValueType>
@@ -401,8 +401,8 @@ void Matrix<T>::ColPerm(const Permutation<T>& P){
 #define PVFMM_B1 128
 #define PVFMM_B2 32
 template <class T>
-Matrix<T> Matrix<T>::Transpose(){
-  Matrix<T>& M=*this;
+Matrix<T> Matrix<T>::Transpose() const{
+  const Matrix<T>& M=*this;
   size_t d0=M.dim[0];
   size_t d1=M.dim[1];
   Matrix<T> M_r(d1,d0,NULL);
@@ -438,7 +438,7 @@ template <class T>
 void Matrix<T>::Transpose(Matrix<T>& M_r, const Matrix<T>& M){
   size_t d0=M.dim[0];
   size_t d1=M.dim[1];
-  M_r.Resize(d1, d0);
+  if (M_r.Dim(0)!=d1 || M_r.Dim(1)!=d0) M_r.Resize(d1, d0);
 
   const size_t blk0=((d0+PVFMM_B1-1)/PVFMM_B1);
   const size_t blk1=((d1+PVFMM_B1-1)/PVFMM_B1);
@@ -491,7 +491,7 @@ void Matrix<T>::SVD(Matrix<T>& tU, Matrix<T>& tS, Matrix<T>& tVT){
   if(INFO!=0) std::cout<<INFO<<'\n';
   assert(INFO==0);
 
-  for(size_t i=1;i<k;i++){
+  for(int i=1;i<k;i++){
     tS[i][i]=tS[0][i];
     tS[0][i]=0;
   }
@@ -502,8 +502,8 @@ template <class T>
 Matrix<T> Matrix<T>::pinv(T eps){
   if(eps<0){
     eps=1.0;
-    while(eps+(T)1.0>1.0) eps*=0.5;
-    eps=pvfmm::sqrt<T>(eps);
+    while(eps+(T)1>1) eps*=(T)0.5;
+    eps=sctl::sqrt<T>(eps);
   }
   Matrix<T> M_r(dim[1],dim[0]);
   mat::pinv(data_ptr,dim[0],dim[1],eps,M_r.data_ptr);

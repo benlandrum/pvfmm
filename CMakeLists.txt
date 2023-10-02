@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(
   PVFMM
   VERSION 1.2
-  LANGUAGES CXX)
+  LANGUAGES CXX C)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_STANDARD 14)
@@ -21,11 +21,14 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++
 endif()
 
+# Add all the SCTL relevant flags
+add_compile_options(-DHAVE_CONFIG_H -DSCTL_QUAD_T=__float128 -DSCTL_HAVE_BLAS -DSCTL_HAVE_LAPACK -DSCTL_HAVE_FFTW)
+
 set(MPI_CXX_SKIP_MPICXX
     true
     CACHE BOOL
           "If true, the MPI-2 C++ bindings are disabled using definitions.")
-          
+
 # required compiler features
 find_package(MPI REQUIRED)
 
@@ -76,35 +79,53 @@ if(SYS_STAT)
   option(PVFMM_HAVE_SYS_STAT_H "PVFMM_HAVE_SYS_STAT_H" ON)
 endif()
 
+option(PVFMM_ENABLE_CUDA "PVFMM_ENABLE_CUDA" OFF)
+if (PVFMM_ENABLE_CUDA)
+  enable_language(CUDA)
+  option(PVFMM_HAVE_CUDA "PVFMM_HAVE_CUDA" ON)
+
+  file(GLOB pvfmm_SRC_CUDA "src/*.cu")
+  set(DEP_LIB_CUDA "${CUDA_CUBLAS_LIBRARIES}")
+  list(APPEND PVFMM_DEFINES "SCTL_HAVE_CUDA")
+else()
+  option(PVFMM_HAVE_CUDA "PVFMM_HAVE_CUDA" OFF)
+endif()
+
 configure_file(pvfmm_config.h.in pvfmm_config.h @ONLY)
 
 # part 1, core library
 file(GLOB pvfmm_SRC "src/*.cpp")
 
 # shared lib
-add_library(pvfmm SHARED ${pvfmm_SRC})
+add_library(pvfmm SHARED ${pvfmm_SRC} ${pvfmm_SRC_CUDA})
 set_target_properties(pvfmm PROPERTIES OUTPUT_NAME pvfmm)
 target_include_directories(
   pvfmm
   PUBLIC $<INSTALL_INTERFACE:include>
+         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SCTL/include/>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-         ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmm PUBLIC ${DEP_LIB} MPI::MPI_CXX)
+         ${CMAKE_CURRENT_BINARY_DIR} ${DEP_INC})
+target_link_libraries(pvfmm PUBLIC ${DEP_LIB} ${DEP_LIB_CUDA} MPI::MPI_CXX)
+target_compile_definitions(pvfmm PUBLIC "${PVFMM_DEFINES}")
 
 # static lib
-add_library(pvfmmStatic STATIC ${pvfmm_SRC})
+add_library(pvfmmStatic STATIC ${pvfmm_SRC}  ${pvfmm_SRC_CUDA})
 set_target_properties(pvfmmStatic PROPERTIES OUTPUT_NAME pvfmm)
 target_include_directories(
   pvfmmStatic
   PUBLIC $<INSTALL_INTERFACE:include>
+         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SCTL/include/>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-         ${CMAKE_BINARY_DIR} ${DEP_INC})
-target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} MPI::MPI_CXX)
+         ${CMAKE_CURRENT_BINARY_DIR} ${DEP_INC})
+target_link_libraries(pvfmmStatic PUBLIC ${DEP_LIB} ${DEP_LIB_CUDA} MPI::MPI_CXX)
+target_compile_definitions(pvfmmStatic PUBLIC "${PVFMM_DEFINES}")
 
 # Config.cmake files
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-  ${CMAKE_BINARY_DIR}/pvfmmConfigVersion.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/pvfmmConfigVersion.cmake
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY AnyNewerVersion)
 
@@ -113,11 +134,11 @@ get_target_property(PVFMM_STATIC_NAME pvfmmStatic OUTPUT_NAME)
 
 configure_package_config_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/pvfmmConfig.cmake.in
-  ${CMAKE_BINARY_DIR}/pvfmmConfig.cmake INSTALL_DESTINATION
+  ${CMAKE_CURRENT_BINARY_DIR}/pvfmmConfig.cmake INSTALL_DESTINATION
   ${CMAKE_INSTALL_PREFIX}/share/pvfmm)
 
-install(FILES ${CMAKE_BINARY_DIR}/pvfmmConfig.cmake
-              ${CMAKE_BINARY_DIR}/pvfmmConfigVersion.cmake
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pvfmmConfig.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/pvfmmConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pvfmm)
 
 # install core library and headers
@@ -132,7 +153,9 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pvfmm/)
-install(FILES ${CMAKE_BINARY_DIR}/pvfmm_config.h
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/SCTL/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pvfmm/)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pvfmm_config.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pvfmm/)
 
 add_subdirectory(examples)

@@ -34,7 +34,7 @@ void MPI_Node<T>::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeDat
   }
 
   //Initialize colleagues array.
-  int n=pvfmm::pow<unsigned int>(3,Dim());
+  int n=sctl::pow<unsigned int>(3,Dim());
   for(int i=0;i<n;i++) colleague[i]=NULL;
 
   //Set MPI_Node specific data.
@@ -119,24 +119,24 @@ void MPI_Node<T>::Subdivide(){
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_coord(nchld);
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_value(nchld);
     std::vector<std::vector<Vector<size_t>*> > chld_pt_scatter(nchld);
-    for(size_t i=0;i<nchld;i++){
+    for(int i=0;i<nchld;i++){
       static_cast<MPI_Node<Real_t>*>((MPI_Node<T>*)this->Child(i))
         ->NodeDataVec(chld_pt_coord[i], chld_pt_value[i], chld_pt_scatter[i]);
     }
 
     Real_t* c=this->Coord();
-    Real_t s=pvfmm::pow<Real_t>(0.5,this->Depth()+1);
+    Real_t s=sctl::pow<Real_t>(0.5,this->Depth()+1);
     for(size_t j=0;j<pt_coord.size();j++){
       if(!pt_coord[j] || !pt_coord[j]->Dim()) continue;
       Vector<Real_t>& coord=*pt_coord[j];
       size_t npts=coord.Dim()/this->dim;
 
       Vector<size_t> cdata(nchld+1);
-      for(size_t i=0;i<nchld+1;i++){
+      for(int i=0;i<nchld+1;i++){
         long long pt1=-1, pt2=npts;
         while(pt2-pt1>1){ // binary search
           long long pt3=(pt1+pt2)/2;
-          assert(pt3<npts);
+          assert(pt3<(long long)npts);
           if(pt3<0) pt3=0;
           int ch_id=(coord[pt3*3+0]>=c[0]+s)*1+
                     (coord[pt3*3+1]>=c[1]+s)*2+
@@ -150,7 +150,7 @@ void MPI_Node<T>::Subdivide(){
       if(pt_coord[j]){
         Vector<Real_t>& vec=*pt_coord[j];
         size_t dof=vec.Dim()/npts;
-        if(dof>0) for(size_t i=0;i<nchld;i++){
+        if(dof>0) for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
@@ -159,7 +159,7 @@ void MPI_Node<T>::Subdivide(){
       if(pt_value[j]){
         Vector<Real_t>& vec=*pt_value[j];
         size_t dof=vec.Dim()/npts;
-        if(dof>0) for(size_t i=0;i<nchld;i++){
+        if(dof>0) for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
@@ -168,7 +168,7 @@ void MPI_Node<T>::Subdivide(){
       if(pt_scatter[j]){
         Vector<size_t>& vec=*pt_scatter[j];
         size_t dof=vec.Dim()/npts;
-        if(dof>0) for(size_t i=0;i<nchld;i++){
+        if(dof>0) for(int i=0;i<nchld;i++){
           Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
@@ -192,7 +192,7 @@ template <class T>
 void MPI_Node<T>::Truncate(){
   if(!this->IsLeaf()){
     int nchld=(1UL<<this->Dim());
-    for(size_t i=0;i<nchld;i++){
+    for(int i=0;i<nchld;i++){
       if(!this->Child(i)->IsLeaf()){
         this->Child(i)->Truncate();
       }
@@ -206,7 +206,7 @@ void MPI_Node<T>::Truncate(){
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_coord(nchld);
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_value(nchld);
     std::vector<std::vector<Vector<size_t>*> > chld_pt_scatter(nchld);
-    for(size_t i=0;i<nchld;i++){
+    for(int i=0;i<nchld;i++){
       static_cast<MPI_Node<Real_t>*>((MPI_Node<T>*)this->Child(i))
         ->NodeDataVec(chld_pt_coord[i], chld_pt_value[i], chld_pt_scatter[i]);
     }
@@ -215,7 +215,7 @@ void MPI_Node<T>::Truncate(){
       if(!pt_coord[j]) continue;
       if(pt_coord[j]){
         size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
           vec_size+=chld_vec.Dim();
         }
@@ -223,7 +223,7 @@ void MPI_Node<T>::Truncate(){
         vec.ReInit(vec_size);
 
         vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
           if(chld_vec.Dim()>0){
             mem::copy<Real_t>(&vec[vec_size],&chld_vec[0],chld_vec.Dim());
@@ -233,7 +233,7 @@ void MPI_Node<T>::Truncate(){
       }
       if(pt_value[j]){
         size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
           vec_size+=chld_vec.Dim();
         }
@@ -241,7 +241,7 @@ void MPI_Node<T>::Truncate(){
         vec.ReInit(vec_size);
 
         vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
           if(chld_vec.Dim()>0){
             mem::copy<Real_t>(&vec[vec_size],&chld_vec[0],chld_vec.Dim());
@@ -251,7 +251,7 @@ void MPI_Node<T>::Truncate(){
       }
       if(pt_scatter[j]){
         size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
           vec_size+=chld_vec.Dim();
         }
@@ -259,7 +259,7 @@ void MPI_Node<T>::Truncate(){
         vec.ReInit(vec_size);
 
         vec_size=0;
-        for(size_t i=0;i<nchld;i++){
+        for(int i=0;i<nchld;i++){
           Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
           if(chld_vec.Dim()>0){
             mem::copy<size_t>(&vec[vec_size],&chld_vec[0],chld_vec.Dim());
@@ -418,9 +418,9 @@ void MPI_Node<T>::ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vect
   size_t data_dof=pt_value.Dim()/n_pts;
   std::vector<Real_t> v(data_dof,0);
   for(size_t i=0;i<n_pts;i++)
-    for(int j=0;j<data_dof;j++)
+    for(size_t j=0;j<data_dof;j++)
       v[j]+=pt_value[i*data_dof+j];
-  for(int j=0;j<data_dof;j++)
+  for(size_t j=0;j<data_dof;j++)
     v[j]=v[j]/n_pts;
   for(size_t i=0;i<x.size()*y.size()*z.size()*data_dof;i++){
     val[i]=v[i%data_dof];
@@ -536,7 +536,7 @@ void MPI_Node<T>::VTU_Data(VTUData_t& vtu_data, std::vector<Node_t*>& nodes, int
       if(n->IsGhost() || !n->IsLeaf()) continue;
 
       Real_t* c=n->Coord();
-      Real_t s=pvfmm::pow<Real_t>(0.5,n->Depth());
+      Real_t s=sctl::pow<Real_t>(0.5,n->Depth());
       for(int i=0;i<8;i++){
         coord.push_back(c[0]+(i&1?1:0)*s);
         coord.push_back(c[1]+(i&2?1:0)*s);

@@ -45,8 +45,8 @@ PrecompMat<T>::PrecompMat(bool scale_invar_): scale_invar(scale_invar_){
 template <class T>
 Matrix<T>& PrecompMat<T>::Mat(int l, Mat_Type type, size_t indx){
   int level=(scale_invar?0:l+PVFMM_PRECOMP_MIN_DEPTH);
-  assert(level*Type_Count+type<mat.size());
-  //#pragma omp critical (PrecompMAT)
+  assert(level*Type_Count+type<(int)mat.size());
+  //#pragma omp critical(PVFMM_PrecompMAT)
   if(indx>=mat[level*Type_Count+type].size()){
     mat[level*Type_Count+type].resize(indx+1);
     assert(false); //TODO: this is not thread safe.
@@ -57,8 +57,8 @@ Matrix<T>& PrecompMat<T>::Mat(int l, Mat_Type type, size_t indx){
 template <class T>
 Permutation<T>& PrecompMat<T>::Perm_R(int l, Mat_Type type, size_t indx){
   int level=l+PVFMM_PRECOMP_MIN_DEPTH;
-  assert(level*Type_Count+type<perm_r.size());
-  //#pragma omp critical (PrecompMAT)
+  assert(level*Type_Count+type<(int)perm_r.size());
+  //#pragma omp critical(PVFMM_PrecompMAT)
   if(indx>=perm_r[level*Type_Count+type].size()){
     perm_r[level*Type_Count+type].resize(indx+1);
     assert(false); //TODO: this is not thread safe.
@@ -69,8 +69,8 @@ Permutation<T>& PrecompMat<T>::Perm_R(int l, Mat_Type type, size_t indx){
 template <class T>
 Permutation<T>& PrecompMat<T>::Perm_C(int l, Mat_Type type, size_t indx){
   int level=l+PVFMM_PRECOMP_MIN_DEPTH;
-  assert(level*Type_Count+type<perm_c.size());
-  //#pragma omp critical (PrecompMAT)
+  assert(level*Type_Count+type<(int)perm_c.size());
+  //#pragma omp critical(PVFMM_PrecompMAT)
   if(indx>=perm_c[level*Type_Count+type].size()){
     perm_c[level*Type_Count+type].resize(indx+1);
     assert(false); //TODO: this is not thread safe.
@@ -96,7 +96,7 @@ size_t PrecompMat<T>::CompactData(int level, Mat_Type type, Matrix<char>& comp_d
   if(comp_data.Dim(0)*comp_data.Dim(1)>offset){
     char* indx_ptr=comp_data[0]+offset;
     HeaderData& header=*(HeaderData*)indx_ptr; indx_ptr+=sizeof(HeaderData);
-    if(level==header.level){ // Data already exists.
+    if(level==(int)header.level){ // Data already exists.
       offset+=header.total_size;
       return offset;
     }

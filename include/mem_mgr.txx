@@ -83,6 +83,7 @@ T* aligned_new(size_t n_elem, const MemoryManager* mem_mgr){
     for(size_t i=0;i<n_elem;i++){
       T* Ai=new(A+i) T();
       assert(Ai==(A+i));
+      PVFMM_UNUSED(Ai);
     }
   }else{
     #ifndef PVFMM_NDEBUG
@@ -130,7 +131,7 @@ void aligned_delete(T* A, const MemoryManager* mem_mgr){
 template <class ValueType> ValueType* copy(ValueType* destination, const ValueType* source, size_t num){
   if (destination != source && num) {
     if (TypeTraits<ValueType>::IsPOD()) {
-      memcpy(destination, source, num * sizeof(ValueType));
+      memcpy((void*)destination, (const void*)source, num * sizeof(ValueType));
     } else {
       for (size_t i = 0; i < num; i++) destination[i] = source[i];
     }
